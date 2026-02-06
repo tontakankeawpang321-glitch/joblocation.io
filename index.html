@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Hub - แหล่งรวมงานประจำ พาร์ทไทม์ งานเสริม</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --brand-primary: #4f46e5; /* Indigo-600 */
+            --brand-bg: #eef2ff; /* Indigo-50 */
+            --brand-dark: #1e1b4b;
+        }
+
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background-color: var(--brand-bg);
+            color: var(--brand-dark);
+        }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .image-slot {
+            aspect-ratio: 1/1;
+            border: 2px dashed #a5b4fc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+        .image-slot:hover { border-color: var(--brand-primary); background: #e0e7ff; }
+        .image-slot img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .category-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.1rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border: 1px solid #c7d2fe;
+        }
+
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .product-card:active { transform: scale(0.98); }
+    </style>
+</head>
+<body class="min-h-screen flex justify-center items-center p-0 md:p-4">
+
+    <div class="w-full max-w-md bg-white shadow-2xl h-screen md:h-[850px] md:rounded-[3rem] overflow-hidden relative flex flex-col border border-indigo-100" id="app">
+        
+        <!-- ================= หน้าหลัก (HOME) ================= -->
+        <div id="view-home" class="view h-full flex flex-col bg-indigo-50/30">
+            <header class="bg-white px-6 pt-8 pb-4 z-20 border-b border-indigo-50">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-600 p-2.5 rounded-2xl text-white shadow-lg shadow-indigo-200">
+                            <i data-lucide="briefcase"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold tracking-tight text-slate-800">ลงประกาศงาน</h1>
+                            <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">หางาน สมัครงาน หารายได้เสริม</p>
+                        </div>
+                    </div>
+                    <button onclick="fetchPosts()" class="w-10 h-10 flex items-center justify-center rounded-full bg-indigo-50 text-indigo-400 hover:text-indigo-600 transition-colors">
+                        <i data-lucide="refresh-cw" width="18"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3 mb-4">
+                    <div class="relative group">
+                        <i data-lucide="search" class="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500" width="18"></i>
+                        <input type="text" id="search-input" placeholder="ค้นหาตำแหน่งงาน, บริษัท..." 
+                            class="w-full pl-12 pr-4 py-3.5 bg-indigo-50/50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all outline-none">
+                    </div>
+
+                    <!-- แถวตัวกรอง จังหวัด และ อำเภอ -->
+                    <div class="flex gap-2">
+                        <div class="relative flex-1">
+                            <select id="filter-province" onchange="handleProvinceChange('filter-province', 'filter-district'); renderHome();" 
+                                class="w-full pl-9 pr-4 py-3 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-slate-600 appearance-none focus:ring-2 focus:ring-indigo-500 outline-none truncate">
+                                <option value="">ทุกจังหวัด</option>
+                            </select>
+                            <i data-lucide="map-pin" class="absolute left-3 top-3.5 text-indigo-500" width="16"></i>
+                        </div>
+                        <div class="relative flex-1">
+                            <select id="filter-district" onchange="renderHome()" disabled
+                                class="w-full pl-9 pr-4 py-3 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-slate-600 appearance-none focus:ring-2 focus:ring-indigo-500 outline-none truncate disabled:bg-slate-100 disabled:text-slate-400">
+                                <option value="">ทุกอำเภอ/เขต</option>
+                            </select>
+                            <i data-lucide="map" class="absolute left-3 top-3.5 text-slate-400" width="16"></i>
+                        </div>
+                    </div>
+
+                    <!-- ตัวกรองประเภทงาน -->
+                    <div class="relative w-full">
+                        <select id="filter-type" onchange="renderHome()" 
+                            class="w-full pl-9 pr-4 py-3 bg-white border border-indigo-100 rounded-xl text-xs font-semibold text-slate-600 appearance-none focus:ring-2 focus:ring-indigo-500 outline-none truncate">
+                            <option value="ทั้งหมด">ประเภทงาน: ทั้งหมด</option>
+                            <option value="งานประจำ">งานประจำ</option>
+                            <option value="งานพาร์ทไทม์">งานพาร์ทไทม์</option>
+                            <option value="งานเสริมทำเองที่บ้าน">งานเสริมทำเองที่บ้าน</option>
+                        </select>
+                        <i data-lucide="filter" class="absolute left-3 top-3.5 text-slate-400" width="16"></i>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" id="category-filters"></div>
+            </header>
+
+            <div id="post-list" class="flex-1 overflow-y-auto p-5 space-y-5 pb-24 relative"></div>
+
+            <button onclick="router.navigate('create')" class="absolute bottom-8 right-6 w-16 h-16 bg-indigo-600 text-white rounded-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-200 z-30">
+                <i data-lucide="plus" width="32"></i>
+            </button>
+        </div>
+
+        <!-- ================= หน้ารายละเอียด (DETAIL) ================= -->
+        <div id="view-detail" class="view h-full flex flex-col bg-white hidden overflow-y-auto">
+            <div id="detail-content"></div>
+        </div>
+
+        <!-- ================= หน้าลงประกาศงาน (CREATE) ================= -->
+        <div id="view-create" class="view h-full flex flex-col bg-white hidden">
+            <header class="px-6 py-6 flex items-center justify-between border-b border-indigo-50">
+                <button onclick="router.back()" class="p-2 hover:bg-indigo-50 rounded-full text-slate-400 transition-colors">
+                    <i data-lucide="x"></i>
+                </button>
+                <h2 class="text-lg font-bold text-slate-800">ลงประกาศรับสมัครงาน</h2>
+                <div class="w-8"></div>
+            </header>
+
+            <form id="create-form" class="flex-1 overflow-y-auto p-6 space-y-8 pb-12">
+                <div class="space-y-4">
+                    <label class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i data-lucide="image" width="18" class="text-indigo-500"></i>
+                        รูปภาพ / โลโก้ / หน้าร้าน (1 รูป)
+                    </label>
+                    <div class="flex justify-center">
+                        <div class="image-slot w-48 h-48" id="slot-0" onclick="triggerFileInput(0)">
+                            <i data-lucide="plus-circle" class="text-indigo-200 mb-1" width="24"></i>
+                            <p class="text-[8px] text-indigo-300 font-bold uppercase">เพิ่มรูปภาพ</p>
+                            <input type="file" id="file-0" accept="image/*" class="hidden" onchange="handleFile(event, 0)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">ตำแหน่งงาน / ชื่องาน</label>
+                        <input required name="title" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="เช่น แอดมินตอบแชท, พนักงานแพ็คของ">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">ประเภทงาน</label>
+                            <select name="jobType" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm outline-none appearance-none focus:border-indigo-500 font-bold text-indigo-600">
+                                <option>งานประจำ</option>
+                                <option>งานพาร์ทไทม์</option>
+                                <option>งานเสริมทำเองที่บ้าน</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">หมวดหมู่</label>
+                            <select name="category" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm outline-none appearance-none focus:border-indigo-500">
+                                <option>งานบริการ/ต้อนรับ</option>
+                                <option>งานขาย/การตลาด</option>
+                                <option>แอดมิน/ธุรการ</option>
+                                <option>งานช่าง/ฝีมือ</option>
+                                <option>งานออนไลน์</option>
+                                <option>อื่นๆ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">รายได้ (บาท)</label>
+                            <input required name="wage" type="text" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm focus:border-indigo-500 outline-none" placeholder="เช่น 15,000 หรือ 500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">การจ่ายเงิน</label>
+                            <select name="paymentType" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm outline-none appearance-none focus:border-indigo-500">
+                                <option>ต่อเดือน</option>
+                                <option>ต่อวัน</option>
+                                <option>ต่อชั่วโมง</option>
+                                <option>ต่อชิ้นงาน</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">จังหวัด</label>
+                            <select name="province" id="create-province" onchange="handleProvinceChange('create-province', 'create-district')" required class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm outline-none appearance-none">
+                                <option value="">เลือกจังหวัด</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">อำเภอ/เขต</label>
+                            <select name="district" id="create-district" required disabled class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm outline-none appearance-none disabled:bg-slate-50 disabled:text-slate-400">
+                                <option value="">เลือกอำเภอ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">ID LINE ติดต่อ</label>
+                            <input required name="lineId" type="text" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm focus:border-indigo-500 outline-none font-bold text-green-600" placeholder="ระบุไอดีไลน์">
+                        </div>
+                         <div>
+                            <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">เบอร์โทร (ถ้ามี)</label>
+                            <input name="phone" type="text" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm focus:border-indigo-500 outline-none" placeholder="08X-XXX-XXXX">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 mb-2 block uppercase tracking-[0.1em]">รายละเอียดงาน</label>
+                        <textarea name="description" rows="4" class="w-full bg-indigo-50/30 border-2 border-indigo-50 rounded-2xl p-4 text-sm focus:border-indigo-500 outline-none" placeholder="ระบุหน้าที่ความรับผิดชอบ, คุณสมบัติผู้สมัคร, เวลาทำงาน..."></textarea>
+                    </div>
+                </div>
+
+                <div class="sticky bottom-0 bg-white p-6 border-t border-indigo-50 flex gap-3 z-30">
+                    <button type="button" onclick="router.back()" class="flex-1 bg-indigo-50 text-indigo-400 py-5 rounded-2xl font-bold active:scale-95 transition-all">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" id="submit-btn" class="flex-[2] bg-indigo-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-indigo-100 active:scale-95 transition-all">
+                        ลงประกาศงาน
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API URL Backend (Google Apps Script)
+        const API_URL = "https://script.google.com/macros/s/AKfycbw91W3bKhWu1iMcxEYIbmeNFtJxO8NNdAEdwF29cflU5JAfK_7Mg5wtfxXqVIm7s5Osrw/exec";
+
+        let state = {
+            posts: [],
+            currentView: 'home',
+            images: [null],
+            filterCategory: 'ทั้งหมด',
+            selectedPost: null,
+            isLoading: false
+        };
+
+        const categories = [
+            { label: 'ทั้งหมด', icon: 'layout-grid' },
+            { label: 'งานบริการ', icon: 'coffee' }, 
+            { label: 'งานขาย', icon: 'store' }, 
+            { label: 'แอดมิน', icon: 'monitor' },
+            { label: 'งานช่าง', icon: 'scissors' }, // ปรับให้ตรงกับ categoryKey
+            { label: 'งานออนไลน์', icon: 'wifi' }    // ปรับให้ตรงกับ categoryKey
+        ];
+
+        // ข้อมูลจังหวัดและอำเภอ (ย่อส่วนบางส่วนเพื่อความกระชับของไฟล์)
+        const thaiLocations = {
+            "กรุงเทพมหานคร": ["พระนคร", "ดุสิต", "หนองจอก", "บางรัก", "บางเขน", "บางกะปิ", "ปทุมวัน", "ป้อมปราบศัตรูพ่าย", "พระโขนง", "มีนบุรี", "ลาดกระบัง", "ยานนาวา", "สัมพันธวงศ์", "พญาไท", "ธนบุรี", "บางกอกใหญ่", "ห้วยขวาง", "คลองสาน", "ตลิ่งชัน", "บางกอกน้อย", "บางขุนเทียน", "ภาษีเจริญ", "หนองแขม", "ราษฎร์บูรณะ", "บางพลัด", "ดินแดง", "บึงกุ่ม", "สาทร", "บางซื่อ", "จตุจักร", "บางคอแหลม", "ประเวศ", "คลองเตย", "สวนหลวง", "จอมทอง", "ดอนเมือง", "ราชเทวี", "ลาดพร้าว", "วัฒนา", "บางแค", "หลักสี่", "สายไหม", "คันนายาว", "สะพานสูง", "วังทองหลาง", "คลองสามวา", "บางนา", "ทวีวัฒนา", "ทุ่งครุ", "บางบอน"],
+            "สมุทรปราการ": ["เมืองสมุทรปราการ", "บางบ่อ", "บางพลี", "พระประแดง", "พระสมุทรเจดีย์", "บางเสาธง"],
+            "นนทบุรี": ["เมืองนนทบุรี", "บางกรวย", "บางใหญ่", "บางบัวทอง", "ไทรน้อย", "ปากเกร็ด"],
+            "ปทุมธานี": ["เมืองปทุมธานี", "คลองหลวง", "ธัญบุรี", "หนองเสือ", "ลาดหลุมแก้ว", "ลำลูกกา", "สามโคก"],
+            "พระนครศรีอยุธยา": ["พระนครศรีอยุธยา", "ท่าเรือ", "นครหลวง", "บางไทร", "บางบาล", "บางปะอิน", "บางปะหัน", "ผักไห่", "ภาชี", "ลาดบัวหลวง", "วังน้อย", "เสนา", "บางซ้าย", "อุทัย", "มหาราช", "บ้านแพรก"],
+            "เชียงใหม่": ["เมืองเชียงใหม่", "จอมทอง", "แม่แจ่ม", "เชียงดาว", "ดอยสะเก็ด", "แม่แตง", "แม่ริม", "สะเมิง", "ฝาง", "แม่อาย", "พร้าว", "สันป่าตอง", "สันกำแพง", "สันทราย", "หางดง", "ฮอด", "ดอยเต่า", "อมก๋อย", "สารภี", "เวียงแหง", "ไชยปราการ", "แม่วาง", "แม่ออน", "ดอยหล่อ", "กัลยาณิวัฒนา"],
+            "ขอนแก่น": ["เมืองขอนแก่น", "บ้านฝาง", "พระยืน", "หนองเรือ", "ชุมแพ", "สีชมพู", "น้ำพอง", "อุบลรัตน์", "กระนวน", "บ้านไผ่", "เปือยน้อย", "พล", "แวงใหญ่", "แวงน้อย", "หนองสองห้อง", "ภูเวียง", "มัญจาคีรี", "ชนบท", "เขาสวนกวาง", "ภูผาม่าน", "ซำสูง", "โคกโพธิ์ไชย", "หนองนาคำ", "บ้านแฮด", "โนนศิลา", "เวียงเก่า"],
+            "ภูเก็ต": ["เมืองภูเก็ต", "กะทู้", "ถลาง"],
+            "ชลบุรี": ["เมืองชลบุรี", "บ้านบึง", "หนองใหญ่", "บางละมุง", "พานทอง", "พนัสนิคม", "ศรีราชา", "เกาะสีชัง", "สัตหีบ", "บ่อทอง", "เกาะจันทร์"],
+            "กระบี่": ["เมืองกระบี่", "เขาพนม", "เกาะลันตา", "คลองท่อม", "อ่าวลึก", "ปลายพระยา", "ลำทับ", "เหนือคลอง"],
+            "กาญจนบุรี": ["เมืองกาญจนบุรี", "ไทรโยค", "บ่อพลอย", "ศรีสวัสดิ์", "ท่ามะกา", "ท่าม่วง", "ทองผาภูมิ", "สังขละบุรี", "พนมทวน", "เลาขวัญ", "ด่านมะขามเตี้ย", "หนองปรือ", "ห้วยกระเจา"],
+            "ทำงานที่บ้าน (WFH)": ["ออนไลน์", "รีโมท", "ทั่วประเทศ"]
+        };
+        // รายชื่อจังหวัดอื่นๆ (เพื่อให้ครบ 77 จังหวัด จะใช้ตรรกะเติมอำเภอเมืองอัตโนมัติหากไม่มีข้อมูลใน object)
+        const otherProvinces = [
+            "กาฬสินธุ์", "กำแพงเพชร", "จันทบุรี", "ฉะเชิงเทรา", "ชัยนาท", "ชัยภูมิ", "ชุมพร", "เชียงราย", "ตรัง", "ตราด", "ตาก", "นครนายก", "นครปฐม", "นครพนม", "นครราชสีมา", "นครสวรรค์", "นครศรีธรรมราช", "น่าน", "นราธิวาส", "บุรีรัมย์", "ประจวบคีรีขันธ์", "ปราจีนบุรี", "ปัตตานี", "พะเยา", "พังงา", "พัทลุง", "พิจิตร", "พิษณุโลก", "เพชรบุรี", "เพชรบูรณ์", "แพร่", "มหาสารคาม", "มุกดาหาร", "แม่ฮ่องสอน", "ยโสธร", "ยะลา", "ร้อยเอ็ด", "ระนอง", "ระยอง", "ราชบุรี", "ลพบุรี", "ลำปาง", "ลำพูน", "เลย", "ศรีสะเกษ", "สกลนคร", "สงขลา", "สตูล", "สมุทรสงคราม", "สมุทรสาคร", "สระแก้ว", "สระบุรี", "สิงห์บุรี", "สุโขทัย", "สุพรรณบุรี", "สุราษฎร์ธานี", "สุรินทร์", "หนองคาย", "หนองบัวลำภู", "อ่างทอง", "อำนาจเจริญ", "อุดรธานี", "อุตรดิตถ์", "อุทัยธานี", "อุบลราชธานี"
+        ];
+        
+        // รวมจังหวัดทั้งหมด
+        otherProvinces.forEach(p => {
+            if (!thaiLocations[p]) {
+                thaiLocations[p] = ["เมือง" + p, "อำเภอทั่วไป"];
+            }
+        });
+
+        // จัดเรียงจังหวัดตามตัวอักษร
+        const sortedProvinces = Object.keys(thaiLocations).sort((a,b) => a.localeCompare(b, 'th'));
+
+        // Helper ฟังก์ชันป้องกัน XSS
+        function escapeHTML(str = '') {
+            return str.replace(/[&<>"']/g, m =>
+                ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])
+            );
+        }
+        
+        // Helper แปลงลิงก์ Google Drive เป็นลิงก์รูปภาพโดยตรง
+        function getDirectImage(url) {
+            if (!url) {
+                return 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600';
+            }
+
+            url = url.trim();
+
+            let fileId = null;
+
+            // /file/d/ID/view
+            if (url.includes('/d/')) {
+                const m = url.match(/\/d\/([^/]+)/);
+                if (m) fileId = m[1];
+            }
+
+            // uc?id=ID
+            if (!fileId && url.includes('id=')) {
+                const m = url.match(/id=([^&]+)/);
+                if (m) fileId = m[1];
+            }
+
+            if (fileId) {
+                // ✅ แบบนี้ขึ้นทุก browser
+                return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+            }
+
+            return url;
+        }
+
+        const router = {
+            navigate: (viewId, data = null) => {
+                document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+                const targetView = document.getElementById(`view-${viewId}`);
+                if (targetView) {
+                    targetView.classList.remove('hidden');
+                    targetView.classList.add('fade-in');
+                }
+                state.currentView = viewId;
+                if(viewId === 'detail') renderDetail(data);
+                if(viewId === 'home') renderHome();
+                lucide.createIcons();
+            },
+            back: () => router.navigate('home')
+        };
+
+        function triggerFileInput(index) { document.getElementById(`file-${index}`).click(); }
+
+        function handleFile(event, index) {
+            const file = event.target.files[0];
+            if(!file) return;
+            
+            // ตรวจสอบขนาดไฟล์ (ไม่เกิน 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire('ขนาดไฟล์ใหญ่เกินไป', 'กรุณาอัปโหลดรูปภาพขนาดไม่เกิน 2MB', 'warning');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                state.images[index] = e.target.result;
+                const slot = document.getElementById(`slot-${index}`);
+                slot.innerHTML = `<img src="${e.target.result}" alt="Preview"><button type="button" onclick="removeImage(event, ${index})" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg"><i data-lucide="x" width="14"></i></button>`;
+                lucide.createIcons();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(e, index) {
+            e.stopPropagation();
+            state.images[index] = null;
+            const slot = document.getElementById(`slot-${index}`);
+            slot.innerHTML = `<i data-lucide="plus-circle" class="text-indigo-200 mb-1" width="24"></i><p class="text-[8px] text-indigo-300 font-bold uppercase">เพิ่มรูปภาพ</p><input type="file" id="file-${index}" accept="image/*" class="hidden" onchange="handleFile(event, ${index})">`;
+            lucide.createIcons();
+        }
+
+        function initLocationSelects() {
+            const filterProv = document.getElementById('filter-province');
+            const createProv = document.getElementById('create-province');
+            
+            const options = `<option value="">ทุกจังหวัด</option>` + sortedProvinces.map(p => `<option value="${p}">${p}</option>`).join('');
+            const createOptions = `<option value="">เลือกจังหวัด</option>` + sortedProvinces.map(p => `<option value="${p}">${p}</option>`).join('');
+
+            if(filterProv) filterProv.innerHTML = options;
+            if(createProv) createProv.innerHTML = createOptions;
+        }
+
+        function handleProvinceChange(provSelectId, distSelectId) {
+            const province = document.getElementById(provSelectId).value;
+            const distSelect = document.getElementById(distSelectId);
+            
+            if (!province) {
+                distSelect.innerHTML = `<option value="">${provSelectId.includes('filter') ? 'ทุกอำเภอ/เขต' : 'เลือกอำเภอ'}</option>`;
+                distSelect.disabled = true;
+                return;
+            }
+
+            const districts = thaiLocations[province] || ["เมือง" + province, "อื่นๆ"];
+            distSelect.innerHTML = `<option value="">${provSelectId.includes('filter') ? 'ทุกอำเภอ/เขต' : 'เลือกอำเภอ'}</option>` + 
+                districts.map(d => `<option value="${d}">${d}</option>`).join('');
+            distSelect.disabled = false;
+        }
+
+        function renderHome() {
+            const list = document.getElementById('post-list');
+            
+            if (state.isLoading) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-64 text-indigo-500">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                        <p class="font-bold">กำลังโหลดข้อมูล...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const province = document.getElementById('filter-province').value;
+            const district = document.getElementById('filter-district').value;
+            const jobType = document.getElementById('filter-type').value;
+            
+            document.getElementById('category-filters').innerHTML = categories.map(cat => `
+                <button onclick="state.filterCategory='${cat.label}'; renderHome();" 
+                    class="category-chip ${state.filterCategory === cat.label ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white text-slate-500 hover:bg-indigo-50'}">
+                    <i data-lucide="${cat.icon}" width="14"></i>
+                    ${cat.label}
+                </button>
+            `).join('');
+            
+            const filtered = state.posts.filter(p => {
+                const matchesSearch = (String(p.title) + String(p.description)).toLowerCase().includes(search);
+                const matchesCategory = state.filterCategory === 'ทั้งหมด' || p.categoryKey === state.filterCategory;
+                const matchesProv = !province || p.province === province;
+                const matchesDist = !district || p.district === district;
+                const matchesType = jobType === 'ทั้งหมด' || p.jobType === jobType;
+                return matchesSearch && matchesCategory && matchesProv && matchesDist && matchesType;
+            });
+
+            if(filtered.length === 0) {
+                list.innerHTML = `<div class="flex flex-col items-center justify-center text-indigo-200 mt-20">
+                    <i data-lucide="search-x" width="64" class="mb-4 opacity-20"></i>
+                    <p class="font-bold text-sm">ไม่พบงานที่คุณกำลังมองหา</p>
+                </div>`;
+            } else {
+                list.innerHTML = filtered.map(p => {
+                    let badgeColor = 'bg-blue-500';
+                    if(p.jobType === 'งานพาร์ทไทม์') badgeColor = 'bg-orange-500';
+                    if(p.jobType === 'งานเสริมทำเองที่บ้าน') badgeColor = 'bg-pink-500';
+
+                    const wage = Number(p.wage) || 0;
+                    
+                    // ใช้รูปลำดับแรกและแปลงลิงก์
+                    const displayImage = getDirectImage(p.images[0]);
+
+                    return `
+                    <div onclick="router.navigate('detail', '${p.id}')" class="product-card bg-white rounded-[2rem] shadow-sm border border-indigo-50 overflow-hidden fade-in cursor-pointer group">
+                        <div class="h-48 bg-indigo-50 relative overflow-hidden">
+                            <img src="${displayImage}" 
+                                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                onerror="this.src='https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600'">
+                            <div class="absolute top-4 left-4 flex flex-col gap-2">
+                                <span class="${badgeColor}/90 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-lg shadow-sm uppercase tracking-widest">${p.jobType}</span>
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="font-bold text-slate-800 text-lg line-clamp-1 mb-1">${p.title}</h3>
+                            <div class="flex items-center text-slate-400 text-[11px] gap-1.5 mb-5">
+                                <i data-lucide="map-pin" width="12" class="text-indigo-500"></i> 
+                                ${p.district ? p.district + ', ' : ''}${p.province}
+                                <span class="mx-1">•</span>
+                                <span class="text-indigo-500 font-bold">${p.categoryKey || p.category}</span>
+                            </div>
+                            <div class="flex items-end justify-between pt-4 border-t border-indigo-50">
+                                <div>
+                                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">รายได้ / ค่าจ้าง</p>
+                                    <p class="text-indigo-600 font-black text-xl">฿${wage.toLocaleString()} <span class="text-xs text-slate-400 font-normal">/${p.paymentType}</span></p>
+                                </div>
+                                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                    <i data-lucide="chevron-right" width="18"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function renderDetail(postId) {
+            const post = state.posts.find(p => String(p.id) === String(postId));
+            if(!post) return router.back();
+            
+            // กรองรูปและแปลงลิงก์ทั้งหมด
+            const validImages = post.images.filter(i => i).map(url => getDirectImage(url));
+            
+            const wage = Number(post.wage) || 0;
+
+            let imageLayout = `
+                <div class="flex h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+                    ${validImages.length ? validImages.map(img => `<img src="${img}" class="min-w-full h-full object-cover snap-start" onerror="this.src='https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=600'">`).join('') : `<div class="min-w-full bg-indigo-50 flex items-center justify-center text-indigo-200">ไม่มีรูปภาพ</div>`}
+                </div>
+            `;
+
+            document.getElementById('detail-content').innerHTML = `
+                <div class="relative h-[300px]">
+                    <button onclick="router.back()" class="absolute top-6 left-6 z-20 bg-white/95 p-3 rounded-2xl shadow-xl text-slate-800 transition-transform active:scale-90">
+                        <i data-lucide="arrow-left"></i>
+                    </button>
+                    <!-- ปุ่มลบประกาศ -->
+                    <button onclick="confirmDelete('${post.id}')" class="absolute top-6 right-6 z-20 bg-white/95 p-3 rounded-2xl shadow-xl text-red-500 transition-transform active:scale-90 hover:bg-red-50">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                    ${imageLayout}
+                </div>
+                <div class="p-8 space-y-8 -mt-10 bg-white rounded-t-[3rem] relative shadow-2xl">
+                    <div class="w-12 h-1.5 bg-indigo-100 rounded-full mx-auto -mt-4 mb-4"></div>
+                    <div>
+                        <div class="flex gap-2 mb-4">
+                            <span class="bg-indigo-50 text-indigo-600 text-[10px] font-black px-4 py-2 rounded-xl uppercase">${post.jobType}</span>
+                            <span class="bg-slate-100 text-slate-600 text-[10px] font-black px-4 py-2 rounded-xl uppercase">${post.category}</span>
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-800 mb-3">${post.title}</h2>
+                        <div class="flex flex-wrap items-center gap-4 text-slate-500 text-sm mb-4">
+                            <div class="flex items-center gap-1.5"><i data-lucide="map-pin" width="16" class="text-indigo-500"></i> ${post.district ? post.district + ', ' : ''}${post.province}</div>
+                            <div class="flex items-center gap-1.5 text-green-600 font-bold"><i data-lucide="message-circle" width="16"></i> ID: ${post.lineId}</div>
+                        </div>
+                        <div class="bg-indigo-50 p-6 rounded-2xl flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] text-indigo-400 font-black uppercase mb-1">รายได้</p>
+                                <p class="text-3xl font-black text-indigo-600">฿${wage.toLocaleString()}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[10px] text-slate-400 font-black uppercase mb-1">จ่ายแบบ</p>
+                                <p class="text-sm font-bold text-slate-600">${post.paymentType}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-2"><i data-lucide="file-text" width="18" class="text-indigo-500"></i> รายละเอียดงาน</h4>
+                        <p class="text-slate-500 text-sm leading-relaxed whitespace-pre-wrap bg-slate-50 p-4 rounded-2xl border border-slate-100">${escapeHTML(post.description || '-')}</p>
+                    </div>
+                </div>
+                <div class="sticky bottom-0 bg-white/90 backdrop-blur-md p-6 flex flex-col gap-3 border-t border-indigo-50 z-30">
+                    <button onclick="copyLine('${post.lineId}')" class="w-full bg-green-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all shadow-lg shadow-green-100">
+                        <i data-lucide="copy" width="20"></i> แอดไลน์: ${post.lineId}
+                    </button>
+                    ${post.phone ? `<a href="tel:${post.phone}" class="w-full bg-white border-2 border-indigo-50 text-indigo-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 active:scale-95 transition-all">
+                        <i data-lucide="phone" width="18"></i> โทรติดต่อ
+                    </a>` : ''}
+                </div>
+            `;
+            lucide.createIcons();
+        }
+
+        // ฟังก์ชันยืนยันการลบ
+        async function confirmDelete(id) {
+            const result = await Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: "ประกาศนี้จะถูกลบถาวรและไม่สามารถกู้คืนได้",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#cbd5e1',
+                confirmButtonText: 'ลบประกาศ',
+                cancelButtonText: 'ยกเลิก',
+                customClass: { popup: 'rounded-3xl' }
+            });
+
+            if (result.isConfirmed) {
+                deletePost(id);
+            }
+        }
+
+        // ฟังก์ชันส่งคำสั่งลบไปยัง Backend
+        async function deletePost(id) {
+            Swal.fire({
+                title: 'กำลังลบ...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                // ส่ง action: 'deletePost' พร้อม id ไปยัง GAS
+                await callAPI('deletePost', { id: id });
+                
+                // ลบออกจาก state ท้องถิ่นทันที (Optimistic UI)
+                state.posts = state.posts.filter(p => p.id !== id);
+                
+                await Swal.fire({
+                    title: 'ลบสำเร็จ!',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                
+                router.back();
+            } catch (error) {
+                console.error(error);
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถลบโพสต์ได้', 'error');
+            }
+        }
+
+        function copyLine(id) {
+            const el = document.createElement('textarea');
+            el.value = id;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            Swal.fire({ title: 'คัดลอก ID แล้ว!', text: 'นำไปเพิ่มเพื่อนใน Line ได้เลย', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+
+        async function callAPI(action, payload = null) {
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action, payload })
+                });
+                
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                
+                return await res.json();
+            } catch (error) {
+                console.error("API Error:", error);
+                throw error;
+            }
+        }
+
+        async function fetchPosts() {
+            state.isLoading = true;
+            renderHome();
+
+            try {
+                const posts = await callAPI('getPosts');
+
+                state.posts = posts.map(p => {
+                    // ✅ ปรับปรุงการรับรูปภาพ: รองรับทั้ง Array, String เดียว, และ String ขั้นด้วยคอมม่า
+                    let images = [];
+                    if (p.images) {
+                        const raw = Array.isArray(p.images) ? p.images : String(p.images).split(',');
+                        images = raw.map(i => i.trim()).filter(i => i !== "");
+                    }
+
+                    return {
+                        id: String(p.id),
+                        title: String(p.title || ''),
+                        jobType: String(p.jobType || ''),
+                        category: String(p.category || ''),
+                        categoryKey: String(p.category || '').split('/')[0],
+                        province: String(p.province || ''),
+                        district: String(p.district || ''),
+                        wage: String(p.wage || '0'),
+                        paymentType: String(p.paymentType || ''),
+                        lineId: String(p.lineId || ''),
+                        phone: String(p.phone || ''),
+                        description: String(p.description || ''),
+                        images: images // ใช้ images ที่จัดการแล้ว
+                    };
+                });
+
+            } catch (err) {
+                console.error(err);
+            } finally {
+                state.isLoading = false;
+                renderHome();
+            }
+        }
+
+        document.getElementById('create-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (state.images.filter(i => i).length > 1) {
+                 Swal.fire('อัปโหลดได้ 1 รูปเท่านั้น');
+                 return;
+            }
+
+            Swal.fire({
+                title: 'กำลังบันทึกข้อมูล...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const formData = new FormData(e.target);
+            const newPost = {
+                id: Date.now().toString(), 
+                title: formData.get('title'), 
+                jobType: formData.get('jobType'),
+                category: formData.get('category'),
+                categoryKey: formData.get('category').split('/')[0], 
+                province: formData.get('province'), 
+                district: formData.get('district'),
+                wage: formData.get('wage').replace(/,/g, ''), 
+                paymentType: formData.get('paymentType'),
+                lineId: formData.get('lineId'),
+                phone: formData.get('phone'), 
+                description: formData.get('description'), 
+                images: [...state.images].filter(i => i)
+            };
+
+            try {
+                await callAPI('createPost', newPost);
+                
+                await fetchPosts();
+                
+                await Swal.fire({ 
+                    title: 'ลงประกาศสำเร็จ!', 
+                    text: 'ประกาศงานของคุณถูกส่งไปยังระบบแล้ว', 
+                    icon: 'success', 
+                    confirmButtonColor: '#4f46e5', 
+                    customClass: { popup: 'rounded-3xl' } 
+                });
+                
+                e.target.reset();
+                state.images = [null];
+                document.getElementById('create-district').innerHTML = '<option value="">เลือกอำเภอ</option>';
+                document.getElementById('create-district').disabled = true;
+                router.navigate('home');
+                
+            } catch (error) {
+                console.error('Error submitting post:', error);
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถลงประกาศได้ กรุณาลองใหม่อีกครั้ง', 'error');
+            }
+        });
+
+        document.getElementById('search-input').addEventListener('input', renderHome);
+        window.onload = () => { initLocationSelects(); fetchPosts(); lucide.createIcons(); };
+    </script>
+</body>
+</html>
